@@ -18,8 +18,9 @@ from database import (
     RefreshTokenModel
 )
 from schemas import (UserRegisterResponse, UserRegisterSchema,
-    UserActivationRequestSchema, EmailSchema, UserResetPasswordCoplete,
-    UserLoginSchema, UserLoginResponse, RefreshTokenSchema)
+                     UserActivationRequestSchema, EmailSchema,
+                     UserResetPasswordCoplete, UserLoginSchema,
+                     UserLoginResponse, RefreshTokenSchema)
 from security import passwords
 from security.interfaces import JWTAuthManagerInterface
 
@@ -237,6 +238,7 @@ async def user_login(
             detail="An error occurred while processing the request."
         )
 
+
 @router.post("/refresh/", status_code=200)
 async def user_refresh(
     data: RefreshTokenSchema,
@@ -246,7 +248,7 @@ async def user_refresh(
     try:
         payload = jwt_manager.decode_refresh_token(data.refresh_token)
         user_id = payload.get("user_id")
-    except Exception as e:
+    except SQLAlchemyError:
         raise HTTPException(
             status_code=400,
             detail="Token has expired."
@@ -275,4 +277,3 @@ async def user_refresh(
     return {
         "access_token": access_token_str,
     }
-
