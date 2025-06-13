@@ -184,7 +184,7 @@ async def user_reset_password_complete(data: UserResetPasswordComplete, db: Asyn
         await db.rollback()
         raise HTTPException(
             status_code=500,
-            detail="An error occurred while resetting the password."  # ← именно такую строку ждет твой тест!
+            detail="An error occurred while resetting the password."
         )
 
 
