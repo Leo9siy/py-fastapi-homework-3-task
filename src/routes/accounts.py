@@ -22,7 +22,6 @@ from schemas import (UserRegisterResponse, UserRegisterSchema,
                      UserActivationRequestSchema, EmailSchema,
                      UserResetPasswordComplete, UserLoginSchema,
                      UserLoginResponse, RefreshTokenSchema)
-from security import passwords
 from security.interfaces import JWTAuthManagerInterface
 
 
@@ -43,12 +42,17 @@ async def register(user_data: UserRegisterSchema, db: AsyncSession = Depends(get
         user_group_result = await db.execute(select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER))
         user_group = user_group_result.scalar_one()
 
-        user = UserModel(
-            email=user_data.email,
-            _hashed_password=passwords.hash_password(user_data.password),
-            group_id=user_group.id,
-        )
+        try:
+            user = UserModel.create(
+                email=user_data.email,
+                raw_password=user_data.password,
+                group_id=user_group.id
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
         db.add(user)
+
         await db.flush()
 
         activation_token_model = ActivationTokenModel(user_id=user.id)
@@ -173,7 +177,12 @@ async def user_reset_password_complete(data: UserResetPasswordComplete, db: Asyn
                 detail="Invalid email or token."
             )
 
-        user._hashed_password = passwords.hash_password(data.password)
+        try:
+            user.password = data.password
+        except ValueError:
+            raise HTTPException(
+                500, "Invalid password."
+            )
 
         await db.delete(token)
         await db.commit()
@@ -199,7 +208,7 @@ async def user_login(
         result_user = await db.execute(select(UserModel).where(UserModel.email == data.email))
         user = result_user.scalar_one_or_none()
 
-        if not user or not passwords.verify_password(data.password, cast(str, user._hashed_password)):
+        if not user or not user.verify_password(data.password):
             raise HTTPException(
                 401, "Invalid email or password."
             )
