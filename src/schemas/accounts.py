@@ -42,7 +42,7 @@ class ResponseSchema(BaseModel):
     message: str
 
 
-class UserResetPasswordCoplete(EmailSchema, PasswordSchema):
+class UserResetPasswordComplete(EmailSchema, PasswordSchema):
     token: str
 
 

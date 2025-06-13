@@ -17,9 +17,10 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
+from exceptions import TokenExpiredError
 from schemas import (UserRegisterResponse, UserRegisterSchema,
                      UserActivationRequestSchema, EmailSchema,
-                     UserResetPasswordCoplete, UserLoginSchema,
+                     UserResetPasswordComplete, UserLoginSchema,
                      UserLoginResponse, RefreshTokenSchema)
 from security import passwords
 from security.interfaces import JWTAuthManagerInterface
@@ -141,7 +142,7 @@ async def user_reset_password_request(data: EmailSchema, db: AsyncSession = Depe
 
 
 @router.post("/reset-password/complete/", status_code=200)
-async def user_reset_password_complete(data: UserResetPasswordCoplete, db: AsyncSession = Depends(get_db)):
+async def user_reset_password_complete(data: UserResetPasswordComplete, db: AsyncSession = Depends(get_db)):
     try:
         user_result = await db.execute(select(UserModel).where(UserModel.email == data.email))
         user = user_result.scalar_one_or_none()
@@ -248,10 +249,15 @@ async def user_refresh(
     try:
         payload = jwt_manager.decode_refresh_token(data.refresh_token)
         user_id = payload.get("user_id")
-    except SQLAlchemyError:
+    except TokenExpiredError:
         raise HTTPException(
             status_code=400,
             detail="Token has expired."
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid refresh token."
         )
 
     result_token = await db.execute(select(RefreshTokenModel).where(RefreshTokenModel.token == data.refresh_token))
