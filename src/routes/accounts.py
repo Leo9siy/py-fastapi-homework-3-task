@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import cast
 
 import sqlalchemy
@@ -17,11 +17,12 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from schemas.accounts import UserRegisterResponse, UserRegisterSchema, \
-    UserActivationRequestSchema, EmailSchema, UserResetPasswordCoplete, UserLoginSchema, UserLoginResponse, \
-    RefreshTokenSchema
+from schemas import (UserRegisterResponse, UserRegisterSchema,
+    UserActivationRequestSchema, EmailSchema, UserResetPasswordCoplete,
+    UserLoginSchema, UserLoginResponse, RefreshTokenSchema)
 from security import passwords
 from security.interfaces import JWTAuthManagerInterface
+
 
 router = APIRouter()
 
@@ -58,9 +59,7 @@ async def register(user_data: UserRegisterSchema, db: AsyncSession = Depends(get
             id=user.id,
             email=user.email,
         )
-    except HTTPException:
-        raise
-    except Exception as e:
+    except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
             status_code=500,
@@ -112,9 +111,7 @@ async def user_activate_token(
         await db.delete(token)
         await db.commit()
         return {"message": "User account activated successfully."}
-    except HTTPException:
-        raise
-    except Exception:
+    except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
             status_code=500,
